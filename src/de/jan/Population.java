@@ -1,5 +1,6 @@
 package de.jan;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -27,9 +28,8 @@ public class Population {
     }
 
     public void calcFitness() {
-        for (DNA dna : population
-                ) {
-            dna.calcFitness(this.target);
+        for (int i = 0; i < population.length; i++) {
+            population[i].calcFitness(i);
         }
     }
 
@@ -37,17 +37,17 @@ public class Population {
         //Clear mating pool
         this.matingPool.clear();
 
-        float maxFitness = 0;
+        float minFitness = Float.MAX_VALUE;
         for (DNA dna :
                 this.population) {
-            if (dna.getFitness() > maxFitness) {
-                maxFitness = dna.getFitness();
+            if (dna.getFitness() < minFitness) {
+                minFitness = dna.getFitness();
             }
         }
 
         // fill mating pool. members with better fitness are likely to be picked often
         for (int i = 0; i < population.length; i++) {
-            float fitness = population[i].getFitness() / maxFitness;
+            float fitness = population[i].getFitness() / minFitness;
             int n = (int) fitness * 100;
             for (int j = 0; j < n; j++) {
                 this.matingPool.add(population[i]);

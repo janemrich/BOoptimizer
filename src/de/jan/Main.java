@@ -2,7 +2,7 @@ package de.jan;
 
 public class Main {
     public static void main(String[] args) {
-        Population pop = new Population("hi", (float) 0.01, 100);
+        Population pop = new Population("hi", (float) 0.01, 10);
         while (!pop.isFinished()) {
             pop.naturalSelection();
             pop.generate();
