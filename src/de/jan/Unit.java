@@ -1,7 +1,7 @@
 package de.jan;
 
 public enum Unit {
-    SCV("SCV"), BARRACKS("Barracks"), SUPPLY_DEPOT("Supply Depot"), MARINE("Marine");
+    SCV("SCV"), BARRACKS("Barracks"), SUPPLY_DEPOT("SupplyDepot"), MARINE("Marine");
 
     private final String unitDescription;
 

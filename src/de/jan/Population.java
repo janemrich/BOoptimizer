@@ -1,6 +1,9 @@
 package de.jan;
 
-import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -25,11 +28,12 @@ public class Population {
         }
         this.matingPool = new ArrayList<DNA>();
         calcFitness();
+        logGeneration();
     }
 
     public void calcFitness() {
         for (int i = 0; i < population.length; i++) {
-            population[i].calcFitness(i);
+            population[i].calcFitness(this.generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
         }
     }
 
@@ -64,7 +68,17 @@ public class Population {
             DNA partnerA = this.matingPool.get(a);
             DNA partnerB = this.matingPool.get(b);
             DNA child = partnerA.crossover(partnerB);
-            child.mutate(this.mutationRate);
+            int j = 0;
+            while (!child.valid() && i < 100) {
+                child = partnerA.crossover(partnerB);
+                j++;
+            }
+            DNA mutatedChild = child;
+            mutatedChild.mutate(this.mutationRate);
+            while (!mutatedChild.valid()) {
+                mutatedChild = child;
+                mutatedChild.mutate(0.05f);
+            }
             this.population[i] = child;
         }
         this.generations++;
@@ -84,7 +98,7 @@ public class Population {
             }
         }
 
-        this.best = this.population[index].getPhrase();
+        this.best = this.population[index].getBuildOrderJSON();
         if (worldrecord == this.perfectScore) {
             this.finished = true;
         }
@@ -105,5 +119,22 @@ public class Population {
             total += dna.getFitness();
         }
         return total / this.population.length;
+    }
+
+    void logGeneration() {
+        try {
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"),true));
+            writer.append(this.getGenerations() + ",");
+            // average
+            writer.append(Float.toString(this.getAverageFitness()));
+            // values
+            for (int i = 0; i < this.population.length; i++) {
+                writer.append("," + this.population[i].getFitness());
+            }
+            writer.append("\n");
+            writer.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 }
