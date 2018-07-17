@@ -6,6 +6,9 @@ import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Population {
 
@@ -14,11 +17,11 @@ public class Population {
     private int generations;
     private String target;
     private boolean finished = false;
-    private float mutationRate;
-    private float perfectScore = 1;
+    private double mutationRate;
+    private double perfectScore = 1;
     private String best = "";
 
-    public Population(String target, float mutationRate, int num) {
+    public Population(String target, double mutationRate, int num) {
         this.target = target;
         this.mutationRate = mutationRate;
 
@@ -37,11 +40,28 @@ public class Population {
         }
     }
 
+    /**
+     * evaluate fitness in parallel
+     */
+    public void calcFitnessParallel() {
+        ExecutorService executor = Executors.newFixedThreadPool(1);
+        for (int i = 0; i < this.population.length; i++) {
+            population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+            executor.submit(this.population[i]);
+        }
+        //executor.shutdown();
+        try {
+            System.out.println(executor.awaitTermination(10, TimeUnit.MINUTES));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void naturalSelection() {
         //Clear mating pool
         this.matingPool.clear();
 
-        float minFitness = Float.MAX_VALUE;
+        double minFitness = Double.MAX_VALUE;
         for (DNA dna :
                 this.population) {
             if (dna.getFitness() < minFitness) {
@@ -51,7 +71,7 @@ public class Population {
 
         // fill mating pool. members with better fitness are likely to be picked often
         for (int i = 0; i < population.length; i++) {
-            float fitness = population[i].getFitness() / minFitness;
+            double fitness = population[i].getFitness() / minFitness;
             int n = (int) fitness * 100;
             for (int j = 0; j < n; j++) {
                 this.matingPool.add(population[i]);
@@ -77,7 +97,7 @@ public class Population {
             mutatedChild.mutate(this.mutationRate);
             while (!mutatedChild.valid()) {
                 mutatedChild = child;
-                mutatedChild.mutate(0.05f);
+                mutatedChild.mutate(1);
             }
             this.population[i] = child;
         }
@@ -89,7 +109,7 @@ public class Population {
     }
 
     public void evaluate() {
-        float worldrecord = 0;
+        double worldrecord = 0;
         int index = 0;
         for (int i = 0; i < this.population.length; i++) {
             if (this.population[i].getFitness() > worldrecord) {
@@ -112,8 +132,8 @@ public class Population {
         return generations;
     }
 
-    public float getAverageFitness() {
-        float total = 0;
+    public double getAverageFitness() {
+        double total = 0;
         for (DNA dna :
                 this.population) {
             total += dna.getFitness();
@@ -126,12 +146,12 @@ public class Population {
             PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"),true));
             writer.append(this.getGenerations() + ",");
             // average
-            writer.append(Float.toString(this.getAverageFitness()));
+            writer.append(Double.toString(this.getAverageFitness()));
             // values
             for (int i = 0; i < this.population.length; i++) {
                 writer.append("," + this.population[i].getFitness());
             }
-            writer.append("\n");
+            writer.append("," + this.getBest() + "\n");
             writer.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
