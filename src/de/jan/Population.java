@@ -1,9 +1,6 @@
 package de.jan;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -30,7 +27,7 @@ public class Population {
             population[i] = new DNA(this.target.length());
         }
         this.matingPool = new ArrayList<DNA>();
-        calcFitness();
+        calcFitnessParallel();
         logGeneration();
     }
 
@@ -44,15 +41,27 @@ public class Population {
      * evaluate fitness in parallel
      */
     public void calcFitnessParallel() {
-        ExecutorService executor = Executors.newFixedThreadPool(1);
-        for (int i = 0; i < this.population.length; i++) {
-            population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
-            executor.submit(this.population[i]);
-        }
-        //executor.shutdown();
+        int THREADS = 7;
         try {
-            System.out.println(executor.awaitTermination(10, TimeUnit.MINUTES));
+            for (int i = 0; i < THREADS; i++) {
+                Process starcraft = new ProcessBuilder("/home/jan/StarCraftII/Versions/Base59877/SC2_x64",
+                        "-listen", "127.0.0.1", "-port", Integer.toString(8167 + i)).start();
+            }
+            for (int j = 0; j < ((population.length / THREADS) + 1); j++) {
+                ExecutorService executor = Executors.newFixedThreadPool(THREADS);
+                int from = j * THREADS;
+                int to = Math.min(from + THREADS, population.length);
+                for (int i = from; i < to; i++) {
+                    population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+                    executor.submit(this.population[i]);
+                    System.out.println(Integer.toString(i) + " submitted\n");
+                }
+                executor.shutdown();
+                executor.awaitTermination(5, TimeUnit.MINUTES);
+            }
         } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -143,7 +152,7 @@ public class Population {
 
     void logGeneration() {
         try {
-            PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"),true));
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"), true));
             writer.append(this.getGenerations() + ",");
             // average
             writer.append(Double.toString(this.getAverageFitness()));

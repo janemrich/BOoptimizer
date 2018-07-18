@@ -116,6 +116,7 @@ public class DNA implements Runnable {
      */
     public void calcFitness(int generation, int dna, String target) {
         try {
+
             String directory = "/home/jan/Documents/Starcraft/Log/" + Integer.toString(generation);
             Files.createDirectories(Paths.get(directory));
             String[] params = {
