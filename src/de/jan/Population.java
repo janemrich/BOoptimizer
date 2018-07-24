@@ -2,51 +2,76 @@ package de.jan;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BinaryOperator;
+
+import static de.jan.Main.RETAIN_BEST;
+import static de.jan.Main.THREADS;
+import static de.jan.SCutil.*;
+import static java.util.Arrays.*;
 
 public class Population {
 
-    private DNA[] population;
-    private ArrayList<DNA> matingPool;
+    private Chromosome[] population;
+    private ArrayList<Chromosome> matingPool;
     private int generations;
     private String target;
     private boolean finished = false;
     private double mutationRate;
-    private double perfectScore = 1;
-    private String best = "";
+    private double perfectScore = 2500;
+    private Chromosome best;
+    private boolean multi;
 
-    public Population(String target, double mutationRate, int num) {
+    public Population(String target, double mutationRate, int num, boolean multi) {
         this.target = target;
         this.mutationRate = mutationRate;
 
-        this.population = new DNA[num];
+        this.population = new Chromosome[num];
         for (int i = 0; i < this.population.length; i++) {
-            population[i] = new DNA(this.target.length());
+            if (multi) {
+                population[i] = new MultiChromosome(this.target.length());
+            } else {
+                population[i] = new SingleChromosome(this.target.length());
+            }
         }
-        this.matingPool = new ArrayList<DNA>();
-        calcFitnessParallel();
-        logGeneration();
+        this.matingPool = new ArrayList<Chromosome>();
+        this.multi = multi;
     }
 
     public void calcFitness() {
         for (int i = 0; i < population.length; i++) {
-            population[i].calcFitness(this.generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+            population[i].evaluate(this.generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
         }
     }
 
     /**
-     * evaluate fitness in parallel
+     * findBest fitness in parallel
      */
-    public void calcFitnessParallel() {
-        int THREADS = 7;
+    public void evaluateParallel() {
         try {
-            for (int i = 0; i < THREADS; i++) {
-                Process starcraft = new ProcessBuilder("/home/jan/StarCraftII/Versions/Base59877/SC2_x64",
-                        "-listen", "127.0.0.1", "-port", Integer.toString(8167 + i)).start();
+            /*
+            ExecutorService[] executers = new ExecutorService[THREADS];
+            for (int i = 0; i < executers.length; i++) {
+                executers[i] = Executors.newSingleThreadExecutor();
             }
+            for (int i = 0; i < population.length; i++) {
+                population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+                executers[i % THREADS].submit(population[i]);
+                System.out.println(Integer.toString(i) + " submitted\n");
+            }
+            for (ExecutorService e :
+                    executers) {
+                e.shutdown();
+            }
+            for (ExecutorService e :
+                    executers) {
+                e.awaitTermination(population.length / 2, TimeUnit.MINUTES);
+            }*/
+            /*
             for (int j = 0; j < ((population.length / THREADS) + 1); j++) {
                 ExecutorService executor = Executors.newFixedThreadPool(THREADS);
                 int from = j * THREADS;
@@ -57,11 +82,36 @@ public class Population {
                     System.out.println(Integer.toString(i) + " submitted\n");
                 }
                 executor.shutdown();
-                executor.awaitTermination(5, TimeUnit.MINUTES);
+                executor.awaitTermination(2, TimeUnit.MINUTES);
             }
+            */
+            do {
+                ExecutorService executor = Executors.newFixedThreadPool(THREADS);
+                for (int i = 0; i < population.length; i++) {
+                    population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+                    executor.submit(population[i]);
+                    System.out.print(Integer.toString(i) + ", ");
+                }
+                System.out.println(" submitted");
+                executor.shutdown();
+                System.out.println("awaitTermination");
+                executor.awaitTermination(population.length / 2, TimeUnit.MINUTES);
+                /*
+                int fails = 0;
+                for (Chromosome c :
+                        population) {
+                    if (c.isFail()) fails++;
+                }
+                if (fails > population.length/5) {
+                    System.err.println("\n large evaluation fails");
+                    relaunchStarcraft();
+                } else {
+                //    break;
+                }
+                */
+            } while (stream(population).map(x -> x.isFail()).reduce((b1, b2) -> b1 || b2).get());
+            //*/
         } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -71,16 +121,24 @@ public class Population {
         this.matingPool.clear();
 
         double minFitness = Double.MAX_VALUE;
-        for (DNA dna :
+        for (Chromosome dna :
                 this.population) {
-            if (dna.getFitness() < minFitness) {
-                minFitness = dna.getFitness();
+            Double fitness = dna.getFitness();
+
+            if (dna.getGameSteps() == null) continue; // if evaluation failed
+
+            if (fitness < minFitness) {
+                minFitness = fitness;
             }
         }
 
         // fill mating pool. members with better fitness are likely to be picked often
         for (int i = 0; i < population.length; i++) {
-            double fitness = population[i].getFitness() / minFitness;
+            Chromosome member = population[i];
+
+            if (member.getGameSteps() == null) continue; // if evaluation failed
+
+            double fitness = member.getFitness() / minFitness;
             int n = (int) fitness * 100;
             for (int j = 0; j < n; j++) {
                 this.matingPool.add(population[i]);
@@ -91,43 +149,63 @@ public class Population {
     // create new generation
     public void generate() {
         Random rn = new Random();
+        Object[] arrayOfBest;
+        if (multi) for (Chromosome c:
+                        population) {
+            ((MultiChromosome) c).trim();
+        }
+        if (RETAIN_BEST) {
+            arrayOfBest = stream(population)
+                    .filter(c -> c.getGameSteps() != null)
+                    .sorted((x, y) -> (y.getGameSteps() - x.getGameSteps()))
+                    .toArray();
+        }
         for (int i = 0; i < this.population.length; i++) {
-            int a = rn.nextInt(this.matingPool.size());
-            int b = rn.nextInt(this.matingPool.size());
-            DNA partnerA = this.matingPool.get(a);
-            DNA partnerB = this.matingPool.get(b);
-            DNA child = partnerA.crossover(partnerB);
-            int j = 0;
-            while (!child.valid() && i < 100) {
-                child = partnerA.crossover(partnerB);
-                j++;
+            if (RETAIN_BEST && i < population.length / 7) {
+                this.population[i] = (Chromosome) arrayOfBest[i];
+            } else {
+                int a = rn.nextInt(this.matingPool.size());
+                int b = rn.nextInt(this.matingPool.size());
+                Chromosome partnerA = this.matingPool.get(a);
+                Chromosome partnerB = this.matingPool.get(b);
+                Chromosome[] children = partnerA.crossover(partnerB);
+                Chromosome[] mutatedChildren = new Chromosome[2];
+                for (int j = 0; j < 2; j++) {
+                    mutatedChildren[j] = children[j].clone();
+                    mutatedChildren[j].mutate(this.mutationRate);
+                    while (!mutatedChildren[j].valid()) {
+                        mutatedChildren[j] = children[j].clone();
+                        mutatedChildren[j].mutate(1);
+                    }
+                }
+                this.population[i] = mutatedChildren[0];
+                i++;
+                if (!(i < population.length)) {
+                    generations++;
+                    return;
+                }
+                population[i] = mutatedChildren[1];
             }
-            DNA mutatedChild = child;
-            mutatedChild.mutate(this.mutationRate);
-            while (!mutatedChild.valid()) {
-                mutatedChild = child;
-                mutatedChild.mutate(1);
-            }
-            this.population[i] = child;
         }
         this.generations++;
     }
 
-    public String getBest() {
+    public Chromosome getBest() {
         return best;
     }
 
-    public void evaluate() {
-        double worldrecord = 0;
+    public void findBest() {
+        int worldrecord = Integer.MAX_VALUE;
         int index = 0;
         for (int i = 0; i < this.population.length; i++) {
-            if (this.population[i].getFitness() > worldrecord) {
+            Integer steps = population[i].getGameSteps();
+            if (steps != null && steps < worldrecord) {
                 index = i;
-                worldrecord = this.population[i].getFitness();
+                worldrecord = steps;
             }
         }
 
-        this.best = this.population[index].getBuildOrderJSON();
+        this.best = this.population[index];
         if (worldrecord == this.perfectScore) {
             this.finished = true;
         }
@@ -143,11 +221,29 @@ public class Population {
 
     public double getAverageFitness() {
         double total = 0;
-        for (DNA dna :
+        int i = 0;
+        for (Chromosome dna :
                 this.population) {
-            total += dna.getFitness();
+            if (dna.getGameSteps() != null) {
+                total += dna.getFitness();
+                i++;
+            }
         }
-        return total / this.population.length;
+        return total / i;
+    }
+
+    public int getAverageSteps() {
+        int total = 0;
+        int i = 0;
+        for (Chromosome dna :
+                population) {
+            Integer steps = dna.getGameSteps();
+            if (steps != null) {
+                total += steps;
+                i++;
+            }
+        }
+        return total / i;
     }
 
     void logGeneration() {
@@ -155,12 +251,19 @@ public class Population {
             PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"), true));
             writer.append(this.getGenerations() + ",");
             // average
+            writer.append(Integer.toString(this.getAverageSteps()));
+            writer.append(",");
             writer.append(Double.toString(this.getAverageFitness()));
+            // best
+            writer.append(",");
+            writer.append(Integer.toString(this.best.getGameSteps()));
+            writer.append(",");
+            writer.append(Double.toString(this.best.getFitness()));
             // values
             for (int i = 0; i < this.population.length; i++) {
-                writer.append("," + this.population[i].getFitness());
+                writer.append("," + this.population[i].getGameSteps());
             }
-            writer.append("," + this.getBest() + "\n");
+            writer.append("," + this.getBest().getBuildOrderJSON() + "\n");
             writer.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
