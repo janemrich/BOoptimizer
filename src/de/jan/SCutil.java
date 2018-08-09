@@ -3,11 +3,22 @@ package de.jan;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import static de.jan.Main.SC2_LOCATION;
 import static de.jan.Main.THREADS;
 import static de.jan.Main.starcrafts;
 
 public class SCutil {
 
+    public static void killStarcraft() {
+        for (int i = 0; i < starcrafts.length; i++) {
+            starcrafts[i].destroyForcibly();
+        }
+        try {
+            TimeUnit.SECONDS.sleep(6);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void launchStarcraft() {
         for (int i = 0; i < THREADS; i++) {
@@ -22,7 +33,7 @@ public class SCutil {
 
     public static void launchStarcraft(int i) {
         try {
-            starcrafts[i] = new ProcessBuilder("/home/jan/StarCraftII/Versions/Base59877/SC2_x64",
+            starcrafts[i] = new ProcessBuilder(SC2_LOCATION,
                     "-listen", "127.0.0.1", "-port", Integer.toString(8167 + i)).start();
         } catch (IOException e) {
             e.printStackTrace();

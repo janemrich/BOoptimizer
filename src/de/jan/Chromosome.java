@@ -17,8 +17,16 @@ public abstract class Chromosome implements Runnable {
     private int number;
     private String target;
 
+    public int getNumber()  {
+        return number;
+    }
+
     public boolean isFail() {
         return fail;
+    }
+
+    public void setFail(boolean fail) {
+        this.fail = fail;
     }
 
     private boolean fail = false;
@@ -73,13 +81,9 @@ public abstract class Chromosome implements Runnable {
         try {
             done = false;
             int threadId = (int) (Thread.currentThread().getId() % THREADS);
-            String directory = "/home/jan/Documents/Starcraft/Log/" + Integer.toString(generation);
+            String directory = LOG_LOCATION + "/" + Integer.toString(generation);
             Files.createDirectories(Paths.get(directory));
-            String[] params = {
-                    "-e",
-                    "/home/jan/StarCraftII/Versions/Base59877/SC2_x64",
-                    //"--port", Integer.toString(8167+threadId),
-                    "{\"SC2API Strategy\"           : {" +
+            String strategy = "{\"SC2API Strategy\"           : {" +
                             "\"Terran\"             : \"Terran_MarineRush\"," +
                             "\"ScoutHarassEnemy\"   : true," +
                             "\"Strategies\"         : {" +
@@ -87,15 +91,13 @@ public abstract class Chromosome implements Runnable {
                             "\"Race\"              : \"Terran\"," +
                             "\"OpeningBuildOrder\" : " +
                             this.getBuildOrderJSON() + "," +
-                            //"[\"SCV\", \"SCV\", \"SupplyDepot\", \"SCV\", \"SCV\", \"Barracks\", \"Barracks\", \"Barracks\", \"Barracks\", \"SupplyDepot\", \"SupplyDepot\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\", \"Marine\"]," +
                             "\"ScoutCondition\"    : [ [\"Self\", \"SupplyDepot\"], \">\", [ 0 ] ]," +
                             target +
-                            "}  }   }   }",
-                    "1"};
-            String commandcenter = "/home/jan/Documents/Starcraft/commandcenter/bin/CommandCenter";
-            Process process = new ProcessBuilder(commandcenter, params[0], params[1], params[2],
-                    Integer.toString(generation), Integer.toString(dna), Integer.toString(threadId)).start();
+                            "}  }   }   }";
+            Process process = new ProcessBuilder(BOT_LOCATION, "-e", "/home/jan/StarCraftII/Versions/Base59877/SC2_x64", strategy,
+                    Integer.toString(generation), Integer.toString(dna), Integer.toString(threadId), LOG_LOCATION).start();
             if (process.waitFor(100, TimeUnit.SECONDS)) {
+
                 done = true;
                 if (process.exitValue() != 0) {
                     System.err.println("\nStarcraft " + dna + " / " + threadId + " relaunched after Error code " + process.exitValue());

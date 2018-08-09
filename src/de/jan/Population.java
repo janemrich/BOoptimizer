@@ -2,16 +2,12 @@ package de.jan;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BinaryOperator;
 
-import static de.jan.Main.RETAIN_BEST;
-import static de.jan.Main.THREADS;
-import static de.jan.SCutil.*;
+import static de.jan.Main.*;
 import static java.util.Arrays.*;
 
 public class Population {
@@ -85,9 +81,12 @@ public class Population {
                 executor.awaitTermination(2, TimeUnit.MINUTES);
             }
             */
+            int k = 0;
             do {
                 ExecutorService executor = Executors.newFixedThreadPool(THREADS);
                 for (int i = 0; i < population.length; i++) {
+                    population[i].setFail(false
+                    );
                     population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
                     executor.submit(population[i]);
                     System.out.print(Integer.toString(i) + ", ");
@@ -96,6 +95,7 @@ public class Population {
                 executor.shutdown();
                 System.out.println("awaitTermination");
                 executor.awaitTermination(population.length / 2, TimeUnit.MINUTES);
+                k++;
                 /*
                 int fails = 0;
                 for (Chromosome c :
@@ -109,7 +109,7 @@ public class Population {
                 //    break;
                 }
                 */
-            } while (stream(population).map(x -> x.isFail()).reduce((b1, b2) -> b1 || b2).get());
+            } while (stream(population).map(x -> x.isFail()).reduce((b1, b2) -> b1 || b2).get() && k < 4);
             //*/
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -148,46 +148,58 @@ public class Population {
 
     // create new generation
     public void generate() {
-        Random rn = new Random();
-        Object[] arrayOfBest;
-        if (multi) for (Chromosome c:
-                        population) {
-            ((MultiChromosome) c).trim();
-        }
-        if (RETAIN_BEST) {
-            arrayOfBest = stream(population)
-                    .filter(c -> c.getGameSteps() != null)
-                    .sorted((x, y) -> (y.getGameSteps() - x.getGameSteps()))
-                    .toArray();
-        }
-        for (int i = 0; i < this.population.length; i++) {
-            if (RETAIN_BEST && i < population.length / 7) {
-                this.population[i] = (Chromosome) arrayOfBest[i];
-            } else {
-                int a = rn.nextInt(this.matingPool.size());
-                int b = rn.nextInt(this.matingPool.size());
-                Chromosome partnerA = this.matingPool.get(a);
-                Chromosome partnerB = this.matingPool.get(b);
-                Chromosome[] children = partnerA.crossover(partnerB);
-                Chromosome[] mutatedChildren = new Chromosome[2];
-                for (int j = 0; j < 2; j++) {
-                    mutatedChildren[j] = children[j].clone();
-                    mutatedChildren[j].mutate(this.mutationRate);
-                    while (!mutatedChildren[j].valid()) {
-                        mutatedChildren[j] = children[j].clone();
-                        mutatedChildren[j].mutate(1);
-                    }
-                }
-                this.population[i] = mutatedChildren[0];
-                i++;
-                if (!(i < population.length)) {
-                    generations++;
-                    return;
-                }
-                population[i] = mutatedChildren[1];
+        if (!RANDOM) {
+            Random rn = new Random();
+            Object[] arrayOfBest = null;
+            if (multi) for (Chromosome c :
+                    population) {
+                ((MultiChromosome) c).trim();
             }
+            if (RETAIN_BEST) {
+                arrayOfBest = stream(population)
+                        .filter(c -> c.getGameSteps() != null)
+                        .sorted((x, y) -> (y.getGameSteps() - x.getGameSteps()))
+                        .toArray();
+            }
+            for (int i = 0; i < this.population.length; i++) {
+                if (RETAIN_BEST && i < population.length / 7) {
+                    this.population[i] = (Chromosome) arrayOfBest[i];
+                } else {
+                    int a = rn.nextInt(this.matingPool.size());
+                    int b = rn.nextInt(this.matingPool.size());
+                    Chromosome partnerA = this.matingPool.get(a);
+                    Chromosome partnerB = this.matingPool.get(b);
+                    Chromosome[] children = partnerA.crossover(partnerB);
+                    Chromosome[] mutatedChildren = new Chromosome[2];
+                    for (int j = 0; j < 2; j++) {
+                        mutatedChildren[j] = children[j].clone();
+                        mutatedChildren[j].mutate(this.mutationRate);
+                        while (!mutatedChildren[j].valid()) {
+                            mutatedChildren[j] = children[j].clone();
+                            mutatedChildren[j].mutate(1);
+                        }
+                    }
+                    this.population[i] = mutatedChildren[0];
+                    i++;
+                    if (!(i < population.length)) {
+                        generations++;
+                        return;
+                    }
+                    population[i] = mutatedChildren[1];
+                }
+            }
+            this.generations++;
+        } else {
+            this.population = new Chromosome[population.length];
+            for (int i = 0; i < this.population.length; i++) {
+                if (multi) {
+                    population[i] = new MultiChromosome(this.target.length());
+                } else {
+                    population[i] = new SingleChromosome(this.target.length());
+                }
+            }
+            this.generations++;
         }
-        this.generations++;
     }
 
     public Chromosome getBest() {
@@ -248,7 +260,7 @@ public class Population {
 
     void logGeneration() {
         try {
-            PrintWriter writer = new PrintWriter(new FileOutputStream(new File("/home/jan/Documents/Starcraft/Log/aggregation.log"), true));
+            PrintWriter writer = new PrintWriter(new FileOutputStream(new File(LOG_LOCATION + "/aggregation.log"), true));
             writer.append(this.getGenerations() + ",");
             // average
             writer.append(Integer.toString(this.getAverageSteps()));
@@ -259,11 +271,15 @@ public class Population {
             writer.append(Integer.toString(this.best.getGameSteps()));
             writer.append(",");
             writer.append(Double.toString(this.best.getFitness()));
+            writer.append(",");
+            writer.append(Double.toString(this.best.getNumber()));
             // values
             for (int i = 0; i < this.population.length; i++) {
-                writer.append("," + this.population[i].getGameSteps());
+                writer.append(",");
+                if (!(this.population[i].getGameSteps() == null)) writer.append(Integer.toString(this.population[i].getGameSteps()));
             }
-            writer.append("," + this.getBest().getBuildOrderJSON() + "\n");
+            //writer.append("," + this.getBest().getBuildOrderJSON() + "\n");
+            writer.append("\n");
             writer.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();

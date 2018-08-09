@@ -2,6 +2,7 @@ package de.jan;
 
 import com.sun.istack.internal.NotNull;
 
+import java.security.SecureRandom;
 import java.util.Random;
 
 import static de.jan.Main.ADD_DELETE;
@@ -91,7 +92,7 @@ public class SingleChromosome extends Chromosome {
         boolean firsttime = true;
         while (!child.valid() || !child2.valid() || firsttime) {
             firsttime = false;
-            Random rn = new Random();
+            Random rn = new SecureRandom();
             int midpoint = rn.nextInt(this.genes.length); // pick a midpoint
 
             if (SINGLE_POINT) {
@@ -127,7 +128,7 @@ public class SingleChromosome extends Chromosome {
     }
 
     public void mutate(double mutationRate) {
-        Random rn = new Random();
+        Random rn = new SecureRandom();
         double mutation = rn.nextDouble();
         if (ADD_DELETE) {
             if (rn.nextDouble() < mutationRate) {

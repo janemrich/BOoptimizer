@@ -20,6 +20,7 @@ public enum Unit {
      */
     public static Unit randomUnit() {
         Random rn = new Random();
+        //rn.setSeed(Instant.now().getNano());
 
         int i = rn.nextInt(Unit.values().length);
         return Unit.values()[i];
@@ -30,6 +31,7 @@ public enum Unit {
      */
     public static Unit firstUnit() {
         Random rn = new Random();
+        //rn.setSeed(Instant.now().getNano());
 
         Unit[] units = new Unit[] {SUPPLY_DEPOT, SCV};
         int i = rn.nextInt(units.length);
@@ -41,6 +43,7 @@ public enum Unit {
      */
     public static Unit secondUnit() {
         Random rn = new Random();
+        //rn.setSeed(Instant.now().getNano());
 
         Unit[] units = new Unit[] {SUPPLY_DEPOT, SCV, BARRACKS};
         int i = rn.nextInt(units.length);
