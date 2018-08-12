@@ -1,8 +1,4 @@
 package de.jan;
-
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
 import static de.jan.SCutil.killStarcraft;
 import static de.jan.SCutil.launchStarcraft;
 
@@ -16,6 +12,9 @@ public class Main {
     protected static int POP_SIZE;
 
     protected static boolean RANDOM;
+
+    protected static boolean CONVERGE;
+    protected static double CONVERGE_THRESHOLD;
 
     protected static String LOG_LOCATION;
     protected static String SC2_LOCATION;
@@ -31,11 +30,14 @@ public class Main {
         RETAIN_BEST = Boolean.parseBoolean(args[4]);
         POP_SIZE = Integer.parseInt(args[5]);
         RANDOM = Boolean.parseBoolean(args[6]);
-        int stop = Integer.parseInt(args[7]) / POP_SIZE;
 
-        LOG_LOCATION = args[8];
-        SC2_LOCATION = args[9];
-        BOT_LOCATION = args[10];
+        CONVERGE = Boolean.parseBoolean(args[7]);
+        CONVERGE_THRESHOLD = Double.parseDouble(args[8]);
+        int stop = Integer.parseInt(args[9]) / POP_SIZE;
+
+        LOG_LOCATION = args[10];
+        SC2_LOCATION = args[11];
+        BOT_LOCATION = args[12];
 
         starcrafts = new Process[THREADS];
         launchStarcraft();
@@ -43,7 +45,7 @@ public class Main {
         pop.evaluateParallel();
         pop.findBest();
         pop.logGeneration();
-        while ((pop.getGenerations()+1) < stop) {
+        while (CONVERGE && !pop.isFinished() || (pop.getGenerations()+1) < stop) {
             pop.naturalSelection();
             pop.generate();
             pop.evaluateParallel();

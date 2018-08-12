@@ -218,13 +218,15 @@ public class Population {
         }
 
         this.best = this.population[index];
+        /*
         if (worldrecord == this.perfectScore) {
             this.finished = true;
         }
+        */
     }
 
     public boolean isFinished() {
-        return this.finished;
+        return (((double)this.best.getGameSteps()) / getAverageSteps()) > CONVERGE_THRESHOLD;
     }
 
     public int getGenerations() {
@@ -261,21 +263,21 @@ public class Population {
     void logGeneration() {
         try {
             PrintWriter writer = new PrintWriter(new FileOutputStream(new File(LOG_LOCATION + "/aggregation.log"), true));
-            writer.append(this.getGenerations() + ",");
+            writer.append(this.getGenerations() + ";");
             // average
             writer.append(Integer.toString(this.getAverageSteps()));
-            writer.append(",");
-            writer.append(Double.toString(this.getAverageFitness()));
+            writer.append(";");
+            writer.printf("%.2f",this.getAverageFitness());
             // best
-            writer.append(",");
+            writer.append(";");
             writer.append(Integer.toString(this.best.getGameSteps()));
-            writer.append(",");
-            writer.append(Double.toString(this.best.getFitness()));
-            writer.append(",");
+            writer.append(";");
+            writer.printf("%.2f",this.getBest().getFitness());
+            writer.append(";");
             writer.append(Double.toString(this.best.getNumber()));
             // values
             for (int i = 0; i < this.population.length; i++) {
-                writer.append(",");
+                writer.append(";");
                 if (!(this.population[i].getGameSteps() == null)) writer.append(Integer.toString(this.population[i].getGameSteps()));
             }
             //writer.append("," + this.getBest().getBuildOrderJSON() + "\n");
