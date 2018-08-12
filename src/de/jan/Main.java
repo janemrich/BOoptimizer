@@ -45,7 +45,7 @@ public class Main {
         pop.evaluateParallel();
         pop.findBest();
         pop.logGeneration();
-        while (CONVERGE && !pop.isFinished() || (pop.getGenerations()+1) < stop) {
+        while (((CONVERGE && !pop.isFinished()) || !CONVERGE) && (pop.getGenerations()+1) < stop) {
             pop.naturalSelection();
             pop.generate();
             pop.evaluateParallel();
