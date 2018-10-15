@@ -14,6 +14,7 @@ public class Main {
     protected static boolean RANDOM;
 
     protected static boolean CONVERGE;
+    protected static boolean CONVERGE_PERCENTAGE;
     protected static double CONVERGE_THRESHOLD;
 
     protected static String LOG_LOCATION;
@@ -32,12 +33,13 @@ public class Main {
         RANDOM = Boolean.parseBoolean(args[6]);
 
         CONVERGE = Boolean.parseBoolean(args[7]);
-        CONVERGE_THRESHOLD = Double.parseDouble(args[8]);
-        int stop = Integer.parseInt(args[9]) / POP_SIZE;
+        CONVERGE_PERCENTAGE = Boolean.parseBoolean(args[8]);
+        CONVERGE_THRESHOLD = Double.parseDouble(args[9]);
+        int stop = Integer.parseInt(args[10]) / POP_SIZE;
 
-        LOG_LOCATION = args[10];
-        SC2_LOCATION = args[11];
-        BOT_LOCATION = args[12];
+        LOG_LOCATION = args[11];
+        SC2_LOCATION = args[12];
+        BOT_LOCATION = args[13];
 
         starcrafts = new Process[THREADS];
         launchStarcraft();

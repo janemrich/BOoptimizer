@@ -22,6 +22,8 @@ public class Population {
     private Chromosome best;
     private boolean multi;
 
+    private ArrayList<Chromosome> recentBest;
+
     public Population(String target, double mutationRate, int num, boolean multi) {
         this.target = target;
         this.mutationRate = mutationRate;
@@ -87,7 +89,7 @@ public class Population {
                 for (int i = 0; i < population.length; i++) {
                     population[i].setFail(false
                     );
-                    population[i].setParams(generations, i, "\"AttackCondition\"   : [ [\"Self\", \"Marine\"], \">=\", [ 10] ]");
+                    population[i].setParams(generations, i, "\"AttackCondition\"   : [ [ [ [\"Self\", \"Marine\"], \">=\", [ 10] ] \"AND\" [ [\"Self\", \"SCV\"], \">=\", [ 20] ] ]  \"AND\" [ [\"Self\", \"OrbitalCommand\"], \">=\", [ 20] ] ] ");
                     executor.submit(population[i]);
                     System.out.print(Integer.toString(i) + ", ");
                 }
@@ -226,7 +228,20 @@ public class Population {
     }
 
     public boolean isFinished() {
-        return (((double)this.best.getGameSteps()) / getAverageSteps()) > CONVERGE_THRESHOLD;
+        if (CONVERGE_PERCENTAGE) {
+            return (((double)this.best.getGameSteps()) / getAverageSteps()) > CONVERGE_THRESHOLD;
+        } else {
+            recentBest.add(this.best.clone());
+            if (recentBest.size() > CONVERGE_THRESHOLD) {
+                recentBest.remove(0);
+            } else {
+                return false;
+            }
+            for (int i = 1; i < CONVERGE_THRESHOLD; i++) {
+                if (!recentBest.get(i).equals(recentBest.get(i-1))) return false;
+            }
+            return true;
+        }
     }
 
     public int getGenerations() {

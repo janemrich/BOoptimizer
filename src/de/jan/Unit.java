@@ -3,7 +3,7 @@ package de.jan;
 import java.util.Random;
 
 public enum Unit {
-    SCV("SCV"), BARRACKS("Barracks"), SUPPLY_DEPOT("SupplyDepot"), MARINE("Marine");
+    SCV("SCV"), BARRACKS("Barracks"), SUPPLY_DEPOT("SupplyDepot"), MARINE("Marine"), ORBITAL_COMMAND("OrbitalCommand");
 
     private final String unitDescription;
 

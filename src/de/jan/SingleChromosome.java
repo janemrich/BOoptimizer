@@ -1,7 +1,5 @@
 package de.jan;
 
-import com.sun.istack.internal.NotNull;
-
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -28,6 +26,28 @@ public class SingleChromosome extends Chromosome {
         SingleChromosome chr = new SingleChromosome(genes.length);
         chr.genes = this.genes.clone();
         return chr;
+    }
+
+    public int significantGenes() {
+        int marines = 0;
+        int lastMarine = 20;
+        for (int i = 0; marines < 10; i++) {
+            if (genes[i].equals(Unit.MARINE)) marines++;
+            if (marines == 10) lastMarine = i;
+        }
+        return lastMarine + 1;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SingleChromosome)) return false;
+        SingleChromosome other = (SingleChromosome) obj;
+
+        if (this.significantGenes() != other.significantGenes()) return false;
+        for (int i = 0; i < significantGenes(); i++) {
+            if (!this.genes[i].equals(other.genes[i])) return false;
+        }
+        return true;
     }
 
     /**
@@ -132,13 +152,13 @@ public class SingleChromosome extends Chromosome {
         double mutation = rn.nextDouble();
         if (ADD_DELETE) {
             if (rn.nextDouble() < mutationRate) {
-                if (mutation < (1 / (double)3)) {
+                if (mutation < (1 / (double) 3)) {
                     for (int i = 0; i < this.genes.length; i++) {
                         if (rn.nextDouble() < 0.01) {
                             genes[i] = Unit.randomUnit();
                         }
                     }
-                } else if (mutation < (2 / (double)3)) {
+                } else if (mutation < (2 / (double) 3)) {
                     int toRemove = (int) rn.nextDouble() * genes.length;
                     for (int i = toRemove; i < (genes.length - 1); i++) {
                         genes[i] = genes[i + 1];
