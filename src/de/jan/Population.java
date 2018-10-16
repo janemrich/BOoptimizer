@@ -25,6 +25,7 @@ public class Population {
     private ArrayList<Chromosome> recentBest;
 
     public Population(String target, double mutationRate, int num, boolean multi) {
+        this.recentBest = new ArrayList<>();
         this.target = target;
         this.mutationRate = mutationRate;
 
