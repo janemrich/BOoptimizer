@@ -89,7 +89,7 @@ public class Population {
                 for (int i = 0; i < population.length; i++) {
                     population[i].setFail(false
                     );
-                    population[i].setParams(generations, i, "\"AttackCondition\"   : [ [ [ [\"Self\", \"Marine\"], \">=\", [ 10] ] \"AND\" [ [\"Self\", \"SCV\"], \">=\", [ 20] ] ]  \"AND\" [ [\"Self\", \"OrbitalCommand\"], \">=\", [ 20] ] ] ");
+                    population[i].setParams(generations, i, "\"AttackCondition\"   :  [ [\"Self\", \"Marine\"], \">=\", [ 10] ] ");
                     executor.submit(population[i]);
                     System.out.print(Integer.toString(i) + ", ");
                 }
